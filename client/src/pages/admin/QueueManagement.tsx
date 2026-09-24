@@ -188,15 +188,20 @@ export default function QueueManagement() {
                 <Badge variant="secondary">{waiting.length}</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <Table>
+            <CardContent className="p-0 overflow-hidden">
+              <Table className="table-fixed w-full text-sm">
+                <colgroup>
+                  <col className="w-8" />
+                  <col className="w-auto" />
+                  <col className="w-14" />
+                  <col className="w-8" />
+                </colgroup>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Pos</TableHead>
-                    <TableHead>Token</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Persons</TableHead>
-                    <TableHead className="w-8"></TableHead>
+                    <TableHead className="px-2 py-2">#</TableHead>
+                    <TableHead className="px-2 py-2">Token</TableHead>
+                    <TableHead className="px-2 py-2">Pax</TableHead>
+                    <TableHead className="px-1 py-2"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -209,15 +214,14 @@ export default function QueueManagement() {
                   ) : (
                     waiting.map((entry, idx) => (
                       <TableRow key={entry.id}>
-                        <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-bold">{entry.token_number}</TableCell>
-                        <TableCell>{entry.phone_number.replace(/.(?=.{4})/g, '*')}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="gap-1">
+                        <TableCell className="px-2 py-2 font-medium text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="px-2 py-2 font-bold truncate">{entry.token_number}</TableCell>
+                        <TableCell className="px-2 py-2">
+                          <Badge variant="outline" className="gap-1 text-xs px-1">
                             👥 {entry.party_size ?? 1}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-1 py-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
