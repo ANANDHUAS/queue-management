@@ -4,6 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Users } from "lucide-react";
 import { fetchQueueInfo, joinQueue } from "@/lib/queueService";
@@ -18,8 +25,10 @@ export default function JoinPage() {
   const [queueInfo, setQueueInfo] = useState<{ id: string; name: string; businessName: string } | null>(null);
   const [infoLoading, setInfoLoading] = useState(true);
 
-  const isCustom = partySize === "10+";
-  const effectivePartySize = isCustom ? parseInt(customPartySize || "0") : parseInt(partySize);
+  const isCustom = partySize === "5+";
+  const effectivePartySize = isCustom
+    ? parseInt(customPartySize || "0")
+    : parseInt(partySize);
 
   useEffect(() => {
     if (!queueId) return;
@@ -91,6 +100,7 @@ export default function JoinPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleJoin} className="space-y-4 mt-4">
+            {/* Phone Number */}
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
               <Input
@@ -106,34 +116,38 @@ export default function JoinPage() {
               </p>
             </div>
 
+            {/* Number of Persons */}
             <div className="space-y-2">
               <Label htmlFor="partySize" className="flex items-center gap-2">
                 <Users className="w-4 h-4" /> Number of Persons
               </Label>
-              <select
-                id="partySize"
-                value={partySize}
-                onChange={e => setPartySize(e.target.value)}
-                className="w-full h-12 px-3 rounded-md border border-input bg-background/50 text-base focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
-              >
-                {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                  <option key={n} value={String(n)}>{n} {n === 1 ? "person" : "persons"}</option>
-                ))}
-                <option value="10+">10+ persons</option>
-              </select>
+              <Select value={partySize} onValueChange={setPartySize}>
+                <SelectTrigger id="partySize">
+                  <SelectValue placeholder="Select number of persons" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 person</SelectItem>
+                  <SelectItem value="2">2 persons</SelectItem>
+                  <SelectItem value="3">3 persons</SelectItem>
+                  <SelectItem value="4">4 persons</SelectItem>
+                  <SelectItem value="5">5 persons</SelectItem>
+                  <SelectItem value="5+">5+ persons (enter custom)</SelectItem>
+                </SelectContent>
+              </Select>
 
               {isCustom && (
                 <Input
                   id="customPartySize"
                   type="number"
-                  min="11"
-                  placeholder="Enter exact number (e.g. 15)"
+                  min="6"
+                  placeholder="Enter exact number (e.g. 12)"
                   className="text-base py-5 bg-background/50 focus-visible:ring-primary/50"
                   value={customPartySize}
                   onChange={e => setCustomPartySize(e.target.value)}
                 />
               )}
             </div>
+
             <Button
               type="submit"
               className="w-full h-12 text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 transition-all active:scale-[0.98]"
