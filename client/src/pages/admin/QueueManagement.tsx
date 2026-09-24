@@ -150,7 +150,7 @@ export default function QueueManagement() {
                   size="lg"
                   className="flex-1 h-16 text-lg"
                   onClick={() => performAction("next")}
-                  disabled={!!actionLoading}
+                  disabled={!!actionLoading || waiting.length === 0}
                 >
                   {actionLoading === "next" ? <Loader2 className="mr-2 animate-spin w-5 h-5" /> : <ArrowRight className="mr-2 w-5 h-5" />}
                   Call Next
