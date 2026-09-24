@@ -6,49 +6,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { fetchQueueInfo, joinQueue } from "@/lib/queueService";
 
 export default function JoinPage() {
-  const { queueId } = useParams();
+  const { queueId } = useParams<{ queueId: string }>();
   const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
-  const [queueInfo, setQueueInfo] = useState<any>(null);
+  const [queueInfo, setQueueInfo] = useState<{ id: string; name: string; businessName: string } | null>(null);
+  const [infoLoading, setInfoLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch queue info
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3001/api"}/queues/${queueId}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) throw new Error(data.error);
-        setQueueInfo(data);
+    if (!queueId) return;
+    fetchQueueInfo(queueId)
+      .then((info) => {
+        if (!info) throw new Error("Queue not found");
+        setQueueInfo(info);
       })
-      .catch(err => {
-        toast.error("Failed to load queue details");
-      });
+      .catch((err) => {
+        toast.error(err.message || "Failed to load queue details");
+      })
+      .finally(() => setInfoLoading(false));
   }, [queueId]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phoneNumber.length < 5) {
+    if (!queueId || phoneNumber.length < 5) {
       toast.error("Please enter a valid phone number");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3001/api"}/customer/${queueId}/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber })
-      });
-      const data = await res.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
+      const entry = await joinQueue(queueId, phoneNumber);
       toast.success("Joined queue successfully!");
-      navigate(`/queue/${data.entry.id}`);
+      navigate(`/queue/${entry.id}`);
     } catch (error: any) {
       toast.error(error.message || "Failed to join queue");
     } finally {
@@ -56,10 +48,22 @@ export default function JoinPage() {
     }
   };
 
-  if (!queueInfo) {
+  if (infoLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!queueInfo) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center py-12">
+          <CardContent>
+            <p className="text-muted-foreground">This queue does not exist or is no longer active.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -80,9 +84,9 @@ export default function JoinPage() {
           <form onSubmit={handleJoin} className="space-y-4 mt-4">
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
-              <Input 
-                id="phone" 
-                type="tel" 
+              <Input
+                id="phone"
+                type="tel"
                 placeholder="Enter your mobile number"
                 className="text-lg py-6 bg-background/50 focus-visible:ring-primary/50"
                 value={phoneNumber}
@@ -92,8 +96,8 @@ export default function JoinPage() {
                 We'll notify you when it's your turn. No spam.
               </p>
             </div>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full h-12 text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 transition-all active:scale-[0.98]"
               disabled={loading}
             >

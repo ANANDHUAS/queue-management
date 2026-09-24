@@ -1,24 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ArrowRight, SkipForward, CheckCircle2, Megaphone, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import { socketService } from "@/lib/socket";
+import { supabase } from "@/lib/supabase";
+import {
+  fetchQueueWithEntries,
+  callNext,
+  skipCurrent,
+  completeCurrent,
+  type Queue,
+} from "@/lib/queueService";
 
 export default function QueueManagement() {
-  const { queueId } = useParams();
-  const [queue, setQueue] = useState<any>(null);
+  const { queueId } = useParams<{ queueId: string }>();
+  const [queue, setQueue] = useState<Queue | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  const fetchQueue = async () => {
+  const loadQueue = async () => {
+    if (!queueId) return;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3001/api"}/admin/queues/${queueId}`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      const data = await fetchQueueWithEntries(queueId);
+      if (!data) throw new Error("Queue not found");
       setQueue(data);
     } catch (error: any) {
       toast.error(error.message || "Failed to fetch queue");
@@ -28,38 +36,66 @@ export default function QueueManagement() {
   };
 
   useEffect(() => {
-    fetchQueue();
-    
-    const socket = socketService.connect();
-    socket.emit("joinAdminQueue", queueId);
+    if (!queueId) return;
+    loadQueue();
 
-    socket.on("queue:update", (updatedQueue) => {
-      // For simplicity, we just trigger a refetch, but we could also use the payload directly
-      fetchQueue();
-    });
+    // Subscribe to real-time changes on queue_entries for this queue
+    // This completely replaces Socket.io
+    const channel = supabase
+      .channel(`admin-queue-${queueId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "queue_entries",
+          filter: `queue_id=eq.${queueId}`,
+        },
+        () => {
+          // Any change to entries → reload the queue
+          loadQueue();
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
 
     return () => {
-      socket.emit("leaveQueue", `admin:queue:${queueId}`);
-      socket.off("queue:update");
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
     };
   }, [queueId]);
 
   const performAction = async (action: string) => {
+    if (!queueId) return;
     setActionLoading(action);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3001/api"}/admin/queues/${queueId}/${action}`, {
-        method: "POST"
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      
-      if (action === "next" && data.calledEntry) {
-        toast.success(`Called ${data.calledEntry.tokenNumber}`);
-      } else if (action === "next") {
-        toast.info("Queue is empty");
-      } else {
-        toast.success(`Action '${action}' successful`);
+      if (action === "next") {
+        const called = await callNext(queueId);
+        if (called) {
+          toast.success(`Called ${called.token_number}`);
+        } else {
+          toast.info("Queue is empty");
+        }
+      } else if (action === "skip") {
+        await skipCurrent(queueId);
+        toast.success("Entry skipped");
+      } else if (action === "complete") {
+        await completeCurrent(queueId);
+        toast.success("Entry completed");
+      } else if (action === "recall") {
+        // Recall: just show the current token again via a toast
+        const current = queue?.queue_entries?.find(
+          (e) => e.status === "CALLED" || e.status === "SERVING"
+        );
+        if (current) {
+          toast.info(`RECALL: Token ${current.token_number} — please proceed to counter!`, {
+            duration: 5000,
+          });
+        }
       }
+      // Realtime will trigger loadQueue() automatically
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -75,21 +111,24 @@ export default function QueueManagement() {
     );
   }
 
-  const waiting = queue.entries.filter((e: any) => e.status === "WAITING");
-  const current = queue.entries.find((e: any) => e.status === "CALLED" || e.status === "SERVING");
-  const history = queue.entries.filter((e: any) => ["COMPLETED", "SKIPPED"].includes(e.status)).reverse().slice(0, 5);
+  const entries = queue.queue_entries ?? [];
+  const waiting = entries.filter((e) => e.status === "WAITING");
+  const current = entries.find((e) => e.status === "CALLED" || e.status === "SERVING");
+  const history = entries
+    .filter((e) => ["COMPLETED", "SKIPPED"].includes(e.status))
+    .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime())
+    .slice(0, 5);
 
   return (
     <div className="min-h-screen bg-muted/30 p-8">
       <div className="max-w-6xl mx-auto space-y-6">
-        
         <div className="flex items-center gap-4">
           <Link to="/admin">
             <Button variant="ghost" size="icon"><ArrowLeft className="w-5 h-5" /></Button>
           </Link>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{queue.name}</h1>
-            <p className="text-muted-foreground">Manage this queue</p>
+            <p className="text-muted-foreground">Live updates via Supabase Realtime</p>
           </div>
         </div>
 
@@ -102,14 +141,14 @@ export default function QueueManagement() {
             <CardContent className="pt-8 text-center flex flex-col items-center">
               <div className="w-48 h-32 bg-background border-2 rounded-2xl flex items-center justify-center shadow-inner mb-8">
                 <span className="text-6xl font-black text-primary">
-                  {current ? current.tokenNumber : "--"}
+                  {current ? current.token_number : "--"}
                 </span>
               </div>
-              
+
               <div className="flex gap-4 w-full max-w-md">
-                <Button 
-                  size="lg" 
-                  className="flex-1 h-16 text-lg" 
+                <Button
+                  size="lg"
+                  className="flex-1 h-16 text-lg"
                   onClick={() => performAction("next")}
                   disabled={!!actionLoading}
                 >
@@ -159,11 +198,11 @@ export default function QueueManagement() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    waiting.map((entry: any, idx: number) => (
+                    waiting.map((entry, idx) => (
                       <TableRow key={entry.id}>
                         <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-bold">{entry.tokenNumber}</TableCell>
-                        <TableCell>{entry.phoneNumber.replace(/.(?=.{4})/g, '*')}</TableCell>
+                        <TableCell className="font-bold">{entry.token_number}</TableCell>
+                        <TableCell>{entry.phone_number.replace(/.(?=.{4})/g, '*')}</TableCell>
                       </TableRow>
                     ))
                   )}
@@ -195,16 +234,16 @@ export default function QueueManagement() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  history.map((entry: any) => (
+                  history.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="font-bold">{entry.tokenNumber}</TableCell>
+                      <TableCell className="font-bold">{entry.token_number}</TableCell>
                       <TableCell>
                         <Badge variant={entry.status === "COMPLETED" ? "default" : "destructive"}>
                           {entry.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {entry.completedAt ? new Date(entry.completedAt).toLocaleTimeString() : "--"}
+                        {entry.completed_at ? new Date(entry.completed_at).toLocaleTimeString() : "--"}
                       </TableCell>
                     </TableRow>
                   ))
