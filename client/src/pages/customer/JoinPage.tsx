@@ -5,16 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 import { fetchQueueInfo, joinQueue } from "@/lib/queueService";
 
 export default function JoinPage() {
   const { queueId } = useParams<{ queueId: string }>();
   const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [partySize, setPartySize] = useState<string>("1");
+  const [customPartySize, setCustomPartySize] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [queueInfo, setQueueInfo] = useState<{ id: string; name: string; businessName: string } | null>(null);
   const [infoLoading, setInfoLoading] = useState(true);
+
+  const isCustom = partySize === "10+";
+  const effectivePartySize = isCustom ? parseInt(customPartySize || "0") : parseInt(partySize);
 
   useEffect(() => {
     if (!queueId) return;
@@ -35,10 +40,14 @@ export default function JoinPage() {
       toast.error("Please enter a valid phone number");
       return;
     }
+    if (isCustom && (isNaN(effectivePartySize) || effectivePartySize < 1)) {
+      toast.error("Please enter a valid number of persons");
+      return;
+    }
 
     setLoading(true);
     try {
-      const entry = await joinQueue(queueId, phoneNumber);
+      const entry = await joinQueue(queueId, phoneNumber, effectivePartySize);
       toast.success("Joined queue successfully!");
       navigate(`/queue/${entry.id}`);
     } catch (error: any) {
@@ -95,6 +104,35 @@ export default function JoinPage() {
               <p className="text-xs text-muted-foreground">
                 We'll notify you when it's your turn. No spam.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="partySize" className="flex items-center gap-2">
+                <Users className="w-4 h-4" /> Number of Persons
+              </Label>
+              <select
+                id="partySize"
+                value={partySize}
+                onChange={e => setPartySize(e.target.value)}
+                className="w-full h-12 px-3 rounded-md border border-input bg-background/50 text-base focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+              >
+                {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                  <option key={n} value={String(n)}>{n} {n === 1 ? "person" : "persons"}</option>
+                ))}
+                <option value="10+">10+ persons</option>
+              </select>
+
+              {isCustom && (
+                <Input
+                  id="customPartySize"
+                  type="number"
+                  min="11"
+                  placeholder="Enter exact number (e.g. 15)"
+                  className="text-base py-5 bg-background/50 focus-visible:ring-primary/50"
+                  value={customPartySize}
+                  onChange={e => setCustomPartySize(e.target.value)}
+                />
+              )}
             </div>
             <Button
               type="submit"

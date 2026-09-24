@@ -188,6 +188,7 @@ export default function QueueManagement() {
                     <TableHead>Pos</TableHead>
                     <TableHead>Token</TableHead>
                     <TableHead>Phone</TableHead>
+                    <TableHead>Persons</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -203,6 +204,11 @@ export default function QueueManagement() {
                         <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
                         <TableCell className="font-bold">{entry.token_number}</TableCell>
                         <TableCell>{entry.phone_number.replace(/.(?=.{4})/g, '*')}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="gap-1">
+                            👥 {entry.party_size ?? 1}
+                          </Badge>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}

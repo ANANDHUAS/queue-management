@@ -31,6 +31,7 @@ export interface QueueEntry {
   queue_id: string;
   token_number: string;
   phone_number: string;
+  party_size: number;
   status: 'WAITING' | 'CALLED' | 'SERVING' | 'COMPLETED' | 'SKIPPED' | 'CANCELLED';
   joined_at: string;
   called_at: string | null;
@@ -209,10 +210,11 @@ export async function completeCurrent(queueId: string): Promise<void> {
  * Join a queue by calling the atomic DB function.
  * Replaces: POST /api/customer/:queueId/join
  */
-export async function joinQueue(queueId: string, phoneNumber: string): Promise<QueueEntry> {
+export async function joinQueue(queueId: string, phoneNumber: string, partySize: number = 1): Promise<QueueEntry> {
   const { data, error } = await supabase.rpc('join_queue', {
     p_queue_id: queueId,
     p_phone_number: phoneNumber,
+    p_party_size: partySize,
   });
 
   if (error) throw error;
