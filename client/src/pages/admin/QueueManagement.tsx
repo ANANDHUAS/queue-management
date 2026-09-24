@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,20 @@ export default function QueueManagement() {
   const [queue, setQueue] = useState<Queue | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Tick every 30 s so "Waited" column stays fresh
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const timeAgo = useCallback((iso: string) => {
+    const mins = Math.floor((now - new Date(iso).getTime()) / 60_000);
+    if (mins < 1) return "just now";
+    return `${mins}m ago`;
+  }, [now]);
 
   const loadQueue = async () => {
     if (!queueId) return;
@@ -192,7 +205,8 @@ export default function QueueManagement() {
                   <col style={{ width: '3rem' }} />
                   <col style={{ width: '7rem' }} />
                   <col />
-                  <col style={{ width: '6rem' }} />
+                  <col style={{ width: '5.5rem' }} />
+                  <col style={{ width: '5rem' }} />
                   <col style={{ width: '2.5rem' }} />
                 </colgroup>
                 <TableHeader>
@@ -201,6 +215,7 @@ export default function QueueManagement() {
                     <TableHead className="px-3 py-2">Token</TableHead>
                     <TableHead className="px-3 py-2">Phone</TableHead>
                     <TableHead className="px-3 py-2">Persons</TableHead>
+                    <TableHead className="px-3 py-2">Waited</TableHead>
                     <TableHead className="px-1 py-2"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -221,6 +236,9 @@ export default function QueueManagement() {
                           <Badge variant="outline" className="gap-1">
                             👥 {entry.party_size ?? 1}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="px-3 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                          {timeAgo(entry.joined_at)}
                         </TableCell>
                         <TableCell className="px-1 py-2">
                           <DropdownMenu>
