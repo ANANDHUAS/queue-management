@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Business {
+  id         String   @id @default(uuid())
+  authUserId String?
+  name       String
+  slug       String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  queues     Queue[]
+}
+
+model Queue {
+  id                 String       @id @default(uuid())
+  businessId         String
+  name               String
+  prefix             String
+  currentNumber      Int          @default(0)
+  status             String       @default("ACTIVE") // ACTIVE, PAUSED, COMPLETED
+  averageServiceTime Int          @default(5)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  business           Business     @relation(fields: [businessId], references: [id])
+  entries            QueueEntry[]
+}
+
+model QueueEntry {
+  id          String    @id @default(uuid())
+  queueId     String
+  tokenNumber String
+  phoneNumber String
+  status      String    @default("WAITING") // WAITING, CALLED, SERVING, COMPLETED, SKIPPED, CANCELLED
+  joinedAt    DateTime  @default(now())
+  calledAt    DateTime?
+  completedAt DateTime?
+  queue       Queue     @relation(fields: [queueId], references: [id])
+}
