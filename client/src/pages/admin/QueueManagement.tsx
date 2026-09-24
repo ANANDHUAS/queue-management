@@ -141,39 +141,37 @@ export default function QueueManagement() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Control Panel */}
-          <Card className="lg:col-span-2 shadow-sm border-primary/20">
-            <CardHeader className="bg-primary/5 pb-4 border-b">
-              <CardTitle className="text-xl">Now Serving</CardTitle>
+          <Card className="lg:col-span-1 shadow-sm border-primary/20">
+            <CardHeader className="bg-primary/5 py-3 px-4 border-b">
+              <CardTitle className="text-base">Now Serving</CardTitle>
             </CardHeader>
-            <CardContent className="pt-8 text-center flex flex-col items-center">
-              <div className="w-48 h-32 bg-background border-2 rounded-2xl flex items-center justify-center shadow-inner mb-8">
-                <span className="text-6xl font-black text-primary">
+            <CardContent className="py-5 px-4 text-center flex flex-col items-center gap-4">
+              <div className="w-32 h-20 bg-background border-2 rounded-xl flex items-center justify-center shadow-inner">
+                <span className="text-4xl font-black text-primary">
                   {current ? current.token_number : "--"}
                 </span>
               </div>
 
-              <div className="flex gap-4 w-full max-w-md">
-                <Button
-                  size="lg"
-                  className="flex-1 h-16 text-lg"
-                  onClick={() => performAction("next")}
-                  disabled={!!actionLoading || waiting.length === 0}
-                >
-                  {actionLoading === "next" ? <Loader2 className="mr-2 animate-spin w-5 h-5" /> : <ArrowRight className="mr-2 w-5 h-5" />}
-                  Call Next
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => performAction("next")}
+                disabled={!!actionLoading || waiting.length === 0}
+              >
+                {actionLoading === "next" ? <Loader2 className="mr-2 animate-spin w-4 h-4" /> : <ArrowRight className="mr-2 w-4 h-4" />}
+                Call Next
+              </Button>
 
               {current && (
-                <div className="flex gap-3 mt-6">
-                  <Button variant="outline" onClick={() => performAction("recall")} disabled={!!actionLoading}>
-                    <Megaphone className="mr-2 w-4 h-4" /> Recall
+                <div className="flex gap-2 w-full">
+                  <Button size="sm" variant="outline" className="flex-1 text-xs" onClick={() => performAction("recall")} disabled={!!actionLoading}>
+                    <Megaphone className="mr-1 w-3 h-3" /> Recall
                   </Button>
-                  <Button variant="outline" className="text-destructive hover:bg-destructive/10" onClick={() => performAction("skip")} disabled={!!actionLoading}>
-                    <SkipForward className="mr-2 w-4 h-4" /> Skip
+                  <Button size="sm" variant="outline" className="flex-1 text-xs text-destructive hover:bg-destructive/10" onClick={() => performAction("skip")} disabled={!!actionLoading}>
+                    <SkipForward className="mr-1 w-3 h-3" /> Skip
                   </Button>
-                  <Button variant="outline" className="text-green-600 hover:bg-green-600/10" onClick={() => performAction("complete")} disabled={!!actionLoading}>
-                    <CheckCircle2 className="mr-2 w-4 h-4" /> Complete
+                  <Button size="sm" variant="outline" className="flex-1 text-xs text-green-600 hover:bg-green-600/10" onClick={() => performAction("complete")} disabled={!!actionLoading}>
+                    <CheckCircle2 className="mr-1 w-3 h-3" /> Done
                   </Button>
                 </div>
               )}
@@ -181,7 +179,7 @@ export default function QueueManagement() {
           </Card>
 
           {/* Waiting List */}
-          <Card className="shadow-sm">
+          <Card className="lg:col-span-2 shadow-sm">
             <CardHeader className="pb-3 border-b">
               <CardTitle className="text-lg flex justify-between items-center">
                 Waiting List
@@ -191,16 +189,18 @@ export default function QueueManagement() {
             <CardContent className="p-0 overflow-hidden">
               <Table className="table-fixed w-full text-sm">
                 <colgroup>
-                  <col className="w-8" />
-                  <col className="w-auto" />
-                  <col className="w-14" />
-                  <col className="w-8" />
+                  <col style={{ width: '3rem' }} />
+                  <col style={{ width: '7rem' }} />
+                  <col />
+                  <col style={{ width: '6rem' }} />
+                  <col style={{ width: '2.5rem' }} />
                 </colgroup>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="px-2 py-2">#</TableHead>
-                    <TableHead className="px-2 py-2">Token</TableHead>
-                    <TableHead className="px-2 py-2">Pax</TableHead>
+                    <TableHead className="px-3 py-2">Pos</TableHead>
+                    <TableHead className="px-3 py-2">Token</TableHead>
+                    <TableHead className="px-3 py-2">Phone</TableHead>
+                    <TableHead className="px-3 py-2">Persons</TableHead>
                     <TableHead className="px-1 py-2"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -214,10 +214,11 @@ export default function QueueManagement() {
                   ) : (
                     waiting.map((entry, idx) => (
                       <TableRow key={entry.id}>
-                        <TableCell className="px-2 py-2 font-medium text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="px-2 py-2 font-bold truncate">{entry.token_number}</TableCell>
-                        <TableCell className="px-2 py-2">
-                          <Badge variant="outline" className="gap-1 text-xs px-1">
+                        <TableCell className="px-3 py-2 font-medium text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="px-3 py-2 font-bold truncate">{entry.token_number}</TableCell>
+                        <TableCell className="px-3 py-2 text-muted-foreground">{entry.phone_number.replace(/.(?=.{4})/g, '*')}</TableCell>
+                        <TableCell className="px-3 py-2">
+                          <Badge variant="outline" className="gap-1">
                             👥 {entry.party_size ?? 1}
                           </Badge>
                         </TableCell>
