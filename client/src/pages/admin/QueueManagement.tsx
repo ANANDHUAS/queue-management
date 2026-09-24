@@ -4,7 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowRight, SkipForward, CheckCircle2, Megaphone, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowRight, SkipForward, CheckCircle2, Megaphone, ArrowLeft, MoreHorizontal, PhoneCall } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import {
@@ -12,6 +18,7 @@ import {
   callNext,
   skipCurrent,
   completeCurrent,
+  callSpecific,
   type Queue,
 } from "@/lib/queueService";
 
@@ -189,6 +196,7 @@ export default function QueueManagement() {
                     <TableHead>Token</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Persons</TableHead>
+                    <TableHead className="w-8"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -208,6 +216,44 @@ export default function QueueManagement() {
                           <Badge variant="outline" className="gap-1">
                             👥 {entry.party_size ?? 1}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                disabled={!!actionLoading}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer"
+                                onClick={async () => {
+                                  setActionLoading(`call-${entry.id}`);
+                                  try {
+                                    await callSpecific(entry.id);
+                                    toast.success(`Called ${entry.token_number} directly`);
+                                  } catch (err: any) {
+                                    toast.error(err.message || "Failed to call");
+                                  } finally {
+                                    setActionLoading(null);
+                                  }
+                                }}
+                              >
+                                {actionLoading === `call-${entry.id}` ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <PhoneCall className="h-4 w-4 text-primary" />
+                                )}
+                                Call Now
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))

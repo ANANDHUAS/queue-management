@@ -204,6 +204,45 @@ export async function completeCurrent(queueId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Call a specific waiting entry directly, bypassing queue order.
+ * Auto-completes any currently CALLED/SERVING entry first so there
+ * is never more than one active token on the board.
+ */
+export async function callSpecific(entryId: string): Promise<QueueEntry | null> {
+  // 1. Find any currently active entry (CALLED or SERVING)
+  const { data: active } = await supabase
+    .from('queue_entries')
+    .select('id')
+    .in('status', ['CALLED', 'SERVING'])
+    .neq('id', entryId)          // don't accidentally complete the target
+    .order('called_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // 2. Complete the active entry if one exists
+  if (active) {
+    const { error: completeError } = await supabase
+      .from('queue_entries')
+      .update({ status: 'COMPLETED', completed_at: new Date().toISOString() })
+      .eq('id', active.id);
+
+    if (completeError) throw completeError;
+  }
+
+  // 3. Now promote the target entry to CALLED
+  const { data, error } = await supabase
+    .from('queue_entries')
+    .update({ status: 'CALLED', called_at: new Date().toISOString() })
+    .eq('id', entryId)
+    .eq('status', 'WAITING')
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data ?? null;
+}
+
 // ─── Customer ─────────────────────────────────────────────────────────────────
 
 /**
